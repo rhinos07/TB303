@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TB-303 Bass Synthesizer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: radial-gradient(ellipse at center, #2a2a3e 0%, #0f0f1a 100%);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  padding: 30px 16px;
+  user-select: none;
+}
+
+/* ── Main Chassis ── */
+.tb303 {
+  background: linear-gradient(160deg, #cdcac0 0%, #b4b0a4 40%, #9c9488 100%);
+  border-radius: 18px;
+  padding: 22px 24px 20px;
+  box-shadow:
+    0 24px 64px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -2px 0 rgba(0,0,0,0.25);
+  width: 100%;
+  max-width: 980px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.brand { font-size: 13px; font-weight: bold; letter-spacing: 4px; color: #444; text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+.model-name { font-size: 32px; font-weight: 900; color: #d94010; letter-spacing: 3px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+.model-sub { font-size: 10px; font-weight: bold; letter-spacing: 2px; color: #555; text-align: right; line-height: 1.6; }
+
+/* ── Controls Panel ── */
+.controls-panel {
+  background: linear-gradient(180deg, #aaa89a 0%, #928e82 100%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.25), inset 0 -1px 0 rgba(255,255,255,0.15);
+}
+
+.knobs-row {
+  display: flex;
+  gap: 14px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+/* ── Knob ── */
+.knob-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.knob-wrap {
+  width: 56px;
+  height: 56px;
+  position: relative;
+}
+.knob {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #606060, #111);
+  box-shadow:
+    0 5px 14px rgba(0,0,0,0.55),
+    inset 0 2px 5px rgba(255,255,255,0.18),
+    inset 0 -2px 5px rgba(0,0,0,0.4);
+  cursor: ns-resize;
+  position: relative;
+  touch-action: none;
+}
+/* tick marks ring */
+.knob::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(
+    transparent 0deg 45deg,
+    rgba(255,255,255,0.12) 45deg 315deg,
+    transparent 315deg 360deg
+  );
+  pointer-events: none;
+}
+.knob-indicator {
+  position: absolute;
+  width: 3px;
+  height: 17px;
+  background: linear-gradient(to bottom, #fff 70%, rgba(255,255,255,0.3));
+  left: calc(50% - 1.5px);
+  top: 7px;
+  border-radius: 2px;
+  pointer-events: none;
+  transform-origin: 50% calc(56px / 2 - 7px);
+  will-change: transform;
+}
+.knob-label {
+  font-size: 8.5px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  color: #222;
+  text-align: center;
+  text-transform: uppercase;
+}
+.knob-value {
+  font-size: 8px;
+  color: #555;
+  text-align: center;
+  font-family: monospace;
+  min-width: 48px;
+}
+
+/* ── Divider ── */
+.vdivider {
+  width: 1px;
+  height: 84px;
+  background: linear-gradient(to bottom, transparent, #777, transparent);
+  flex-shrink: 0;
+}
+
+/* ── Wave Selector ── */
+.wave-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.wave-title {
+  font-size: 8.5px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #333;
+  text-transform: uppercase;
+}
+.wave-btn {
+  width: 52px;
+  padding: 7px 0;
+  border: 2px solid #777;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #888, #666);
+  color: #ddd;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  text-align: center;
+  transition: all 0.12s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.wave-btn:hover { background: linear-gradient(180deg, #999, #777); }
+.wave-btn.active {
+  background: linear-gradient(180deg, #e86030, #b03010);
+  border-color: #c04020;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(216,64,16,0.5), 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* ── Sequencer Panel ── */
+.sequencer-panel {
+  background: linear-gradient(180deg, #222, #141414);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05);
+  overflow-x: auto;
+}
+.seq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.section-label {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 2.5px;
+  color: #555;
+  text-transform: uppercase;
+}
+.seq-hint {
+  font-size: 8px;
+  color: #444;
+  font-style: italic;
+}
+
+.steps-row {
+  display: flex;
+  gap: 4px;
+  min-width: 720px;
+}
+
+.step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 40px;
+}
+
+.step-num {
+  font-size: 8px;
+  color: #444;
+  font-family: monospace;
+  text-align: center;
+}
+
+/* Active toggle button */
+.step-toggle {
+  width: 100%;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid #3a3a3a;
+  background: #252525;
+  color: #555;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  padding: 0;
+}
+.step-toggle.on {
+  background: #1e3a1e;
+  border-color: #3a7a3a;
+  color: #68d068;
+}
+.step-toggle.playing {
+  background: #d94010 !important;
+  border-color: #ff6030 !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(217,64,16,0.7);
+}
+
+/* Note display */
+.step-note {
+  width: 100%;
+  height: 20px;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #4ab8ff;
+  cursor: pointer;
+  font-family: monospace;
+  font-weight: bold;
+  transition: border-color 0.1s;
+}
+.step-note:hover { border-color: #4ab8ff; }
+
+/* Accent / Slide mini buttons */
+.step-mini-row {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+}
+.mini-btn {
+  flex: 1;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: #444;
+  font-size: 7px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.1s;
+  line-height: 1;
+}
+.mini-btn.accent-on {
+  background: #4a2c00;
+  border-color: #c07800;
+  color: #ffc840;
+}
+.mini-btn.slide-on {
+  background: #003050;
+  border-color: #0080c0;
+  color: #40c0ff;
+}
+
+/* ── Transport Panel ── */
+.transport-panel {
+  background: linear-gradient(180deg, #aaa89a 0%, #928e82 100%);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.25), inset 0 -1px 0 rgba(255,255,255,0.15);
+}
+
+.play-btn {
+  width: 68px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(160deg, #50a050, #286028);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+.play-btn.running {
+  background: linear-gradient(160deg, #c04030, #801010);
+}
+.play-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(0,0,0,0.35); }
+
+.tempo-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tempo-label {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  color: #333;
+}
+.tempo-display {
+  background: #0a0a0a;
+  color: #ff8800;
+  font-family: 'Courier New', monospace;
+  font-size: 22px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 6px;
+  min-width: 72px;
+  text-align: center;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+  cursor: ns-resize;
+}
+.tempo-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  border: 1px solid #666;
+  background: linear-gradient(160deg, #777, #555);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.tempo-btn:active { transform: translateY(1px); }
+
+.transport-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.action-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #666;
+  background: linear-gradient(160deg, #777, #555);
+  color: #ddd;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: all 0.1s;
+  text-transform: uppercase;
+}
+.action-btn:hover { background: linear-gradient(160deg, #888, #666); }
+.action-btn:active { transform: translateY(1px); }
+</style>
+</head>
+<body>
+
+<div class="tb303">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="brand">ROLAND</div>
+    </div>
+    <div class="model-name">TB-303</div>
+    <div class="model-sub">BASS LINE<br>SYNTHESIZER</div>
+  </div>
+
+  <!-- Controls: Knobs + Wave selector -->
+  <div class="controls-panel">
+    <div class="knobs-row" id="knobsRow"></div>
+    <div class="vdivider"></div>
+    <div class="wave-selector">
+      <div class="wave-title">WAVE</div>
+      <button class="wave-btn active" id="btnSaw">SAW</button>
+      <button class="wave-btn"        id="btnSqr">SQR</button>
+    </div>
+  </div>
+
+  <!-- Step Sequencer -->
+  <div class="sequencer-panel">
+    <div class="seq-header">
+      <div class="section-label">Pattern Sequencer</div>
+      <div class="seq-hint">Click step to toggle · Left/Right-click note to change · Scroll note for octave · A = Accent · S = Slide</div>
+    </div>
+    <div class="steps-row" id="stepsRow"></div>
+  </div>
+
+  <!-- Transport -->
+  <div class="transport-panel">
+    <button class="play-btn" id="btnPlay">▶</button>
+
+    <div class="tempo-group">
+      <div class="tempo-label">BPM</div>
+      <div class="tempo-display" id="tempoDisplay" title="Scroll to change">120</div>
+      <button class="tempo-btn" id="btnTempoDown">−</button>
+      <button class="tempo-btn" id="btnTempoUp">+</button>
+    </div>
+
+    <div class="transport-actions">
+      <button class="action-btn" id="btnRandom">Randomize</button>
+      <button class="action-btn" id="btnClear">Clear</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+//  AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+
+let actx = null;
+let osc  = null;
+let filt = null;
+let vca  = null;
+let mast = null;
+
+/** Normalized [0..1] parameter store */
+const P = {
+  tune:      0.50,   // ±12 semitones
+  cutoff:    0.30,   // 80 – 8 000 Hz (expo)
+  resonance: 0.40,   // Q 0.5 – 28
+  envMod:    0.50,   // filter env depth
+  decay:     0.35,   // 0.04 – 2.0 s
+  accent:    0.50,   // accent boost
+  volume:    0.70,   // master level
+  waveform:  'sawtooth',
+};
+
+const cutoffHz  = () => 80  * Math.pow(100, P.cutoff);
+const resonanceQ= () => 0.5 + P.resonance * 27.5;
+const decaySec  = () => 0.04 + P.decay * 1.96;
+const tuneDetune= () => (P.tune - 0.5) * 2400; // cents
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+
+  osc  = actx.createOscillator();
+  filt = actx.createBiquadFilter();
+  vca  = actx.createGain();
+  mast = actx.createGain();
+
+  osc.type            = P.waveform;
+  osc.frequency.value = 110;
+
+  filt.type           = 'lowpass';
+  filt.frequency.value= cutoffHz();
+  filt.Q.value        = resonanceQ();
+
+  vca.gain.value  = 0;
+  mast.gain.value = P.volume;
+
+  osc.connect(filt);
+  filt.connect(vca);
+  vca.connect(mast);
+  mast.connect(actx.destination);
+
+  osc.start();
+}
+
+/**
+ * Schedule one note trigger.
+ * @param {number} freq        - target frequency in Hz
+ * @param {boolean} isAccent
+ * @param {boolean} isSlide    - slide OUT (hold gate, pitch glides to next note)
+ * @param {boolean} prevSlide  - previous note had slide → no re-trigger
+ * @param {number|null} prevFreq - for slide-in glide
+ * @param {number} stepDur     - step duration in seconds (16th note)
+ * @param {number} t           - absolute AudioContext start time
+ */
+function scheduleNote({ freq, isAccent, isSlide, prevSlide, prevFreq, stepDur, t }) {
+  const gateDur = stepDur * 0.82;
+  const baseHz  = cutoffHz();
+  const peakHz  = Math.min(18000, baseHz * (1 + P.envMod * 7 * (isAccent ? 1.9 : 1)));
+  const vel     = isAccent ? 0.3 + P.accent * 0.5 : 0.38;
+
+  // ── Pitch ──────────────────────────────
+  if (prevSlide && prevFreq != null) {
+    osc.frequency.setValueAtTime(prevFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq, t + Math.min(0.07, stepDur * 0.35));
+  } else {
+    osc.frequency.setValueAtTime(freq, t);
+  }
+  osc.detune.setValueAtTime(tuneDetune(), t);
+
+  // ── VCA (gate) ──────────────────────────
+  if (!prevSlide) {
+    vca.gain.setValueAtTime(0.0001, t);
+    vca.gain.linearRampToValueAtTime(vel, t + 0.003);
+  } else {
+    vca.gain.setValueAtTime(vel, t);
+  }
+  if (!isSlide) {
+    vca.gain.setValueAtTime(vel,   t + gateDur - 0.006);
+    vca.gain.linearRampToValueAtTime(0.0001, t + gateDur);
+  }
+  // if isSlide: gate stays open, will be closed by the next note's prevSlide=false
+
+  // ── Filter envelope ──────────────────────
+  if (!prevSlide) {
+    filt.frequency.setValueAtTime(peakHz, t);
+    filt.frequency.exponentialRampToValueAtTime(
+      Math.max(baseHz, 25),
+      t + Math.min(decaySec(), gateDur * 0.92)
+    );
+  }
+  filt.Q.setValueAtTime(resonanceQ(), t);
+}
+
+function silenceNow() {
+  if (!actx) return;
+  const now = actx.currentTime;
+  vca.gain.cancelScheduledValues(now);
+  vca.gain.setValueAtTime(0, now);
+  osc.frequency.cancelScheduledValues(now);
+  filt.frequency.cancelScheduledValues(now);
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  SEQUENCE DATA
+// ═══════════════════════════════════════════════════════
+
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function noteToFreq(note, octave) {
+  const idx = NOTES.indexOf(note);
+  return 440 * Math.pow(2, ((octave + 1) * 12 + idx - 69) / 12);
+}
+
+// 16 steps, default pattern
+const SEQ = Array.from({ length: 16 }, (_, i) => ({
+  on:     i < 8,
+  note:   ['C','C','G','C','A#','A','G','F','E','D#','D','C','G','A#','F','G'][i],
+  octave: 2,
+  accent: [0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0][i] === 1,
+  slide:  [0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0][i] === 1,
+}));
+
+
+// ═══════════════════════════════════════════════════════
+//  SCHEDULER (Web Audio lookahead pattern)
+// ═══════════════════════════════════════════════════════
+
+let bpm          = 120;
+let isPlaying    = false;
+let curStep      = 0;
+let nextT        = 0;
+let schedTimer   = null;
+const AHEAD      = 0.12;   // seconds lookahead
+const TICK_MS    = 25;     // scheduler interval
+
+// For visual step tracking
+const scheduled  = []; // { step, time }
+
+// For slide tracking (across scheduler calls)
+let sPrevFreq    = null;
+let sPrevSlide   = false;
+
+function stepDur() { return 60 / bpm / 2; } // 16th note
+
+function runScheduler() {
+  if (!isPlaying) return;
+  const now = actx.currentTime;
+
+  while (nextT < now + AHEAD) {
+    const s = SEQ[curStep];
+    if (s.on) {
+      const freq = noteToFreq(s.note, s.octave);
+      scheduleNote({
+        freq,
+        isAccent:  s.accent,
+        isSlide:   s.slide,
+        prevSlide: sPrevSlide,
+        prevFreq:  sPrevFreq,
+        stepDur:   stepDur(),
+        t:         nextT,
+      });
+      sPrevFreq  = freq;
+      sPrevSlide = s.slide;
+    } else {
+      // inactive step → close gate if previous was sliding
+      if (sPrevSlide) {
+        const t = nextT;
+        vca.gain.setValueAtTime(0.38, t);
+        vca.gain.linearRampToValueAtTime(0.0001, t + stepDur() * 0.5);
+      }
+      sPrevFreq  = null;
+      sPrevSlide = false;
+    }
+
+    scheduled.push({ step: curStep, time: nextT });
+    nextT  += stepDur();
+    curStep = (curStep + 1) % 16;
+  }
+
+  schedTimer = setTimeout(runScheduler, TICK_MS);
+}
+
+function startSeq() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  isPlaying  = true;
+  curStep    = 0;
+  nextT      = actx.currentTime + 0.05;
+  sPrevFreq  = null;
+  sPrevSlide = false;
+  scheduled.length = 0;
+  runScheduler();
+  rafLoop();
+  document.getElementById('btnPlay').textContent = '⏹';
+  document.getElementById('btnPlay').classList.add('running');
+}
+
+function stopSeq() {
+  isPlaying = false;
+  clearTimeout(schedTimer);
+  silenceNow();
+  scheduled.length = 0;
+  document.querySelectorAll('.step-toggle').forEach(b => b.classList.remove('playing'));
+  document.getElementById('btnPlay').textContent = '▶';
+  document.getElementById('btnPlay').classList.remove('running');
+}
+
+// ── Visual step highlight ──────────────────────────────
+let lastVis = -1;
+function rafLoop() {
+  if (!isPlaying) return;
+  const now = actx.currentTime;
+  let vis = -1;
+  for (let i = scheduled.length - 1; i >= 0; i--) {
+    if (scheduled[i].time <= now) { vis = scheduled[i].step; break; }
+  }
+  // clean old entries
+  while (scheduled.length && scheduled[0].time < now - stepDur()) scheduled.shift();
+
+  if (vis !== lastVis) {
+    document.querySelectorAll('.step-toggle').forEach((b, i) => {
+      b.classList.toggle('playing', i === vis);
+    });
+    lastVis = vis;
+  }
+  requestAnimationFrame(rafLoop);
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  KNOBS
+// ═══════════════════════════════════════════════════════
+
+const KNOB_DEFS = [
+  { id:'tune',      label:'TUNE',      param:'tune',
+    fmt: v => `${(v-0.5)*24 >= 0 ? '+' : ''}${Math.round((v-0.5)*24)} st` },
+  { id:'cutoff',    label:'CUT OFF',   param:'cutoff',
+    fmt: v => `${Math.round(cutoffHz())} Hz` },
+  { id:'resonance', label:'RESONANCE', param:'resonance',
+    fmt: v => `Q ${(resonanceQ()).toFixed(1)}` },
+  { id:'envMod',    label:'ENV MOD',   param:'envMod',
+    fmt: v => `${Math.round(v*100)}%` },
+  { id:'decay',     label:'DECAY',     param:'decay',
+    fmt: v => `${Math.round(decaySec()*1000)} ms` },
+  { id:'accent',    label:'ACCENT',    param:'accent',
+    fmt: v => `${Math.round(v*100)}%` },
+  { id:'volume',    label:'VOLUME',    param:'volume',
+    fmt: v => `${Math.round(v*100)}%` },
+];
+
+function valToRot(v) { return v * 270 - 135; } // -135° … +135°
+
+function buildKnob(def) {
+  const group = document.createElement('div');
+  group.className = 'knob-group';
+
+  const wrap  = document.createElement('div');  wrap.className = 'knob-wrap';
+  const knob  = document.createElement('div');  knob.className = 'knob';
+  const ind   = document.createElement('div');  ind.className  = 'knob-indicator';
+  const lbl   = document.createElement('div');  lbl.className  = 'knob-label';
+  const val   = document.createElement('div');  val.className  = 'knob-value'; val.id = `kv-${def.id}`;
+
+  lbl.textContent = def.label;
+
+  const setVal = (v) => {
+    v = Math.max(0, Math.min(1, v));
+    P[def.param] = v;
+    ind.style.transform = `rotate(${valToRot(v)}deg)`;
+    val.textContent = def.fmt(v);
+    // Live update audio
+    if (actx) {
+      if (def.param === 'cutoff' && filt)
+        filt.frequency.setTargetAtTime(cutoffHz(), actx.currentTime, 0.02);
+      if (def.param === 'resonance' && filt)
+        filt.Q.setTargetAtTime(resonanceQ(), actx.currentTime, 0.02);
+      if (def.param === 'volume' && mast)
+        mast.gain.setTargetAtTime(P.volume, actx.currentTime, 0.02);
+    }
+  };
+
+  // Initialise
+  setVal(P[def.param]);
+
+  // ── Mouse drag ──
+  let dragging = false, startY = 0, startV = 0;
+
+  knob.addEventListener('mousedown', e => {
+    dragging = true; startY = e.clientY; startV = P[def.param];
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    setVal(startV + (startY - e.clientY) / 160);
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  // ── Touch drag ──
+  knob.addEventListener('touchstart', e => {
+    dragging = true; startY = e.touches[0].clientY; startV = P[def.param];
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    setVal(startV + (startY - e.touches[0].clientY) / 160);
+  });
+  window.addEventListener('touchend', () => { dragging = false; });
+
+  // ── Scroll wheel ──
+  knob.addEventListener('wheel', e => {
+    e.preventDefault();
+    setVal(P[def.param] + (e.deltaY < 0 ? 0.02 : -0.02));
+  }, { passive: false });
+
+  // ── Double-click reset ──
+  knob.addEventListener('dblclick', () => {
+    const defaults = { tune:0.5, cutoff:0.3, resonance:0.4, envMod:0.5, decay:0.35, accent:0.5, volume:0.7 };
+    setVal(defaults[def.param]);
+  });
+
+  knob.appendChild(ind);
+  wrap.appendChild(knob);
+  group.appendChild(wrap);
+  group.appendChild(lbl);
+  group.appendChild(val);
+  return group;
+}
+
+const knobsRow = document.getElementById('knobsRow');
+KNOB_DEFS.forEach(def => knobsRow.appendChild(buildKnob(def)));
+
+
+// ═══════════════════════════════════════════════════════
+//  STEP SEQUENCER UI
+// ═══════════════════════════════════════════════════════
+
+function buildSeqUI() {
+  const row = document.getElementById('stepsRow');
+  row.innerHTML = '';
+
+  SEQ.forEach((step, idx) => {
+    const col = document.createElement('div');
+    col.className = 'step-col';
+
+    // Step number
+    const num = document.createElement('div');
+    num.className = 'step-num';
+    num.textContent = idx + 1;
+
+    // Toggle button
+    const tog = document.createElement('button');
+    tog.className = 'step-toggle' + (step.on ? ' on' : '');
+    tog.textContent = step.on ? step.note : '·';
+    tog.title = 'Toggle step';
+    tog.addEventListener('click', () => {
+      step.on = !step.on;
+      tog.classList.toggle('on', step.on);
+      tog.textContent = step.on ? step.note : '·';
+    });
+
+    // Note display
+    const noteEl = document.createElement('div');
+    noteEl.className = 'step-note';
+    noteEl.textContent = `${step.note}${step.octave}`;
+    noteEl.title = 'L-click: note ↑ · R-click: note ↓ · Scroll: octave';
+
+    const refreshNote = () => {
+      noteEl.textContent = `${step.note}${step.octave}`;
+      if (step.on) tog.textContent = step.note;
+    };
+
+    noteEl.addEventListener('click', e => {
+      e.preventDefault();
+      step.note = NOTES[(NOTES.indexOf(step.note) + 1) % 12];
+      refreshNote();
+    });
+    noteEl.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      step.note = NOTES[(NOTES.indexOf(step.note) + 11) % 12];
+      refreshNote();
+    });
+    noteEl.addEventListener('wheel', e => {
+      e.preventDefault();
+      step.octave = Math.max(0, Math.min(4, step.octave + (e.deltaY < 0 ? 1 : -1)));
+      refreshNote();
+    }, { passive: false });
+
+    // Accent + Slide
+    const miniRow = document.createElement('div');
+    miniRow.className = 'step-mini-row';
+
+    const btnA = document.createElement('button');
+    btnA.className = 'mini-btn' + (step.accent ? ' accent-on' : '');
+    btnA.textContent = 'A';
+    btnA.title = 'Accent';
+    btnA.addEventListener('click', () => {
+      step.accent = !step.accent;
+      btnA.classList.toggle('accent-on', step.accent);
+    });
+
+    const btnS = document.createElement('button');
+    btnS.className = 'mini-btn' + (step.slide ? ' slide-on' : '');
+    btnS.textContent = 'S';
+    btnS.title = 'Slide';
+    btnS.addEventListener('click', () => {
+      step.slide = !step.slide;
+      btnS.classList.toggle('slide-on', step.slide);
+    });
+
+    miniRow.appendChild(btnA);
+    miniRow.appendChild(btnS);
+
+    col.appendChild(num);
+    col.appendChild(tog);
+    col.appendChild(noteEl);
+    col.appendChild(miniRow);
+    row.appendChild(col);
+
+    // Back-reference for dynamic label updates
+    step._tog = tog;
+  });
+}
+
+buildSeqUI();
+
+
+// ═══════════════════════════════════════════════════════
+//  TRANSPORT CONTROLS
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('btnPlay').addEventListener('click', () => {
+  isPlaying ? stopSeq() : startSeq();
+});
+
+// Tempo display scroll
+document.getElementById('tempoDisplay').addEventListener('wheel', e => {
+  e.preventDefault();
+  bpm = Math.max(40, Math.min(240, bpm + (e.deltaY < 0 ? 1 : -1)));
+  document.getElementById('tempoDisplay').textContent = bpm;
+}, { passive: false });
+
+// Tempo buttons with held acceleration
+function makeTempoBtnBehavior(btnId, delta) {
+  const btn = document.getElementById(btnId);
+  let holdTimer = null;
+  const step = () => {
+    bpm = Math.max(40, Math.min(240, bpm + delta));
+    document.getElementById('tempoDisplay').textContent = bpm;
+  };
+  btn.addEventListener('click', step);
+  btn.addEventListener('mousedown', () => {
+    let delay = 450;
+    const repeat = () => { step(); holdTimer = setTimeout(repeat, delay = Math.max(60, delay * 0.8)); };
+    holdTimer = setTimeout(repeat, delay);
+  });
+  btn.addEventListener('mouseup',    () => clearTimeout(holdTimer));
+  btn.addEventListener('mouseleave', () => clearTimeout(holdTimer));
+}
+makeTempoBtnBehavior('btnTempoDown', -1);
+makeTempoBtnBehavior('btnTempoUp',   +1);
+
+// Wave buttons
+document.getElementById('btnSaw').addEventListener('click', () => {
+  P.waveform = 'sawtooth';
+  if (osc) osc.type = 'sawtooth';
+  document.getElementById('btnSaw').classList.add('active');
+  document.getElementById('btnSqr').classList.remove('active');
+});
+document.getElementById('btnSqr').addEventListener('click', () => {
+  P.waveform = 'square';
+  if (osc) osc.type = 'square';
+  document.getElementById('btnSqr').classList.add('active');
+  document.getElementById('btnSaw').classList.remove('active');
+});
+
+// Randomize
+document.getElementById('btnRandom').addEventListener('click', () => {
+  const scale = ['C','D','D#','F','G','A#']; // minor pentatonic–ish
+  SEQ.forEach(s => {
+    s.on     = Math.random() > 0.25;
+    s.note   = scale[Math.floor(Math.random() * scale.length)];
+    s.octave = Math.random() > 0.6 ? 3 : 2;
+    s.accent = Math.random() > 0.75;
+    s.slide  = Math.random() > 0.82;
+  });
+  buildSeqUI(); // rebuild to reflect new state
+});
+
+// Clear
+document.getElementById('btnClear').addEventListener('click', () => {
+  SEQ.forEach(s => { s.on = false; s.accent = false; s.slide = false; });
+  buildSeqUI();
+});
+</script>
+</body>
+</html>
